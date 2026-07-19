@@ -88,6 +88,15 @@
   .split-mask {
     overflow: hidden;
     display: inline-block;
+    vertical-align: bottom;
+    padding-top: 0.15em;
+    margin-top: -0.15em;
+    padding-bottom: 0.15em;
+    margin-bottom: -0.15em;
+    padding-left: 0.1em;
+    margin-left: -0.1em;
+    padding-right: 0.25em;
+    margin-right: -0.25em;
   }
   .perspective-1000 {
     perspective: 1000px;

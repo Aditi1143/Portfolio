@@ -1,0 +1,139 @@
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400;1,500&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+  html {
+    scroll-behavior: smooth;
+  }
+  body {
+    font-family: 'Inter', system-ui, sans-serif;
+    background-color: #F5F0E8;
+    color: #111111;
+    overflow-x: hidden;
+  }
+  ::selection {
+    background: #F4B400;
+    color: #111111;
+  }
+}
+
+@layer components {
+  .container-edit {
+    max-width: 1440px;
+    margin: 0 auto;
+    padding: 0 40px;
+  }
+  .content-edit {
+    max-width: 1240px;
+    margin: 0 auto;
+  }
+  .glass-card {
+    background: rgba(255, 255, 255, 0.08);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+  }
+  .glass-card-light {
+    background: rgba(255, 255, 255, 0.65);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(0, 0, 0, 0.06);
+  }
+  .drop-cap::first-letter {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 5.5rem;
+    font-weight: 600;
+    float: left;
+    line-height: 0.85;
+    margin: 0.1em 0.12em 0 0;
+    color: #F4B400;
+  }
+  .text-stroke {
+    -webkit-text-stroke: 1px rgba(17, 17, 17, 0.4);
+    color: transparent;
+  }
+  .text-stroke-light {
+    -webkit-text-stroke: 1px rgba(255, 255, 255, 0.25);
+    color: transparent;
+  }
+}
+
+@layer utilities {
+  .reveal {
+    opacity: 0;
+    transform: translateY(40px);
+    transition: opacity 1s cubic-bezier(0.16, 1, 0.3, 1), transform 1s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .reveal.in-view {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  .reveal-letter {
+    display: inline-block;
+    opacity: 0;
+    transform: translateY(100%);
+    transition: opacity 0.8s ease, transform 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .reveal-letter.in-view {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  .split-mask {
+    overflow: hidden;
+    display: inline-block;
+  }
+  .perspective-1000 {
+    perspective: 1000px;
+  }
+  .preserve-3d {
+    transform-style: preserve-3d;
+  }
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+::-webkit-scrollbar-track {
+  background: #F5F0E8;
+}
+::-webkit-scrollbar-thumb {
+  background: #2E4B38;
+  border-radius: 999px;
+}
+
+/* Hide default cursor on desktop */
+@media (min-width: 1024px) {
+  body {
+    cursor: none;
+  }
+  a, button, [role="button"] {
+    cursor: none;
+  }
+}
+
+/* Magnetic button base */
+.magnetic {
+  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Grid lines bg */
+.grid-lines {
+  background-image:
+    linear-gradient(rgba(17,17,17,0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(17,17,17,0.04) 1px, transparent 1px);
+  background-size: 80px 80px;
+}
+.grid-lines-dark {
+  background-image:
+    linear-gradient(rgba(255,255,255,0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,0.04) 1px, transparent 1px);
+  background-size: 80px 80px;
+}

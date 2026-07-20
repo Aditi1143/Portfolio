@@ -1,207 +1,162 @@
 import { useEffect, useRef, useState } from 'react';
-import { ArrowDown, Download, Github, Linkedin, Mail } from 'lucide-react';
-import { SplitText } from '../animations/Reveal';
-import { useMagnetic } from '../../hooks/useMagnetic';
-import aditiPortrait from '../../assets/aditi.jpg';
+import { ArrowDown } from 'lucide-react';
+import { gsap } from 'gsap';
+import { ScrollTrigger } from 'gsap/ScrollTrigger';
+import heroGreeting from '../../assets/character/hero-greeting.png';
+import designerAtLaptop from '../../assets/character/designer-laptop.png';
+import finalCreatorPose from '../../assets/character/final-creator.png';
 
-const SOCIALS = [
-  { label: 'Email', href: 'mailto:aditi.hallikeri@example.com', icon: Mail },
-  { label: 'LinkedIn', href: '#', icon: Linkedin },
-  { label: 'GitHub', href: '#', icon: Github },
-];
+gsap.registerPlugin(ScrollTrigger);
+
+const POSES = [heroGreeting, designerAtLaptop, finalCreatorPose] as const;
+const SCROLL_DISTANCE = 3600;
+
+type PoseLayer = HTMLImageElement | null;
+
+/** Decodes the character art before ScrollTrigger takes control of the viewport. */
+function preloadPoses() {
+  return Promise.all(
+    POSES.map((src) => {
+      const image = new Image();
+      image.src = src;
+      return image.decode ? image.decode().catch(() => undefined) : new Promise<void>((resolve) => {
+        image.onload = () => resolve();
+        image.onerror = () => resolve();
+      });
+    }),
+  );
+}
 
 export default function Hero() {
-  const [mouse, setMouse] = useState({ x: 0, y: 0 });
-  const heroRef = useRef<HTMLElement>(null);
-  const resumeBtn = useMagnetic<HTMLButtonElement>(0.4);
+  const sectionRef = useRef<HTMLElement>(null);
+  const artRef = useRef<HTMLDivElement>(null);
+  const poseRefs = useRef<PoseLayer[]>([]);
+  const [ready, setReady] = useState(false);
+  const [reducedMotion, setReducedMotion] = useState(false);
 
   useEffect(() => {
-    const onMove = (e: MouseEvent) => {
-      const el = heroRef.current;
-      if (!el) return;
-      const rect = el.getBoundingClientRect();
-      const x = (e.clientX - rect.left) / rect.width - 0.5;
-      const y = (e.clientY - rect.top) / rect.height - 0.5;
-      setMouse({ x, y });
+    let active = true;
+    const media = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const updateMotion = () => setReducedMotion(media.matches);
+    updateMotion();
+    media.addEventListener('change', updateMotion);
+
+    preloadPoses().finally(() => {
+      if (active) setReady(true);
+    });
+
+    return () => {
+      active = false;
+      media.removeEventListener('change', updateMotion);
     };
-    window.addEventListener('mousemove', onMove);
-    return () => window.removeEventListener('mousemove', onMove);
   }, []);
 
-  const parallax = (depth: number) => ({
-    transform: `translate3d(${mouse.x * depth}px, ${mouse.y * depth}px, 0)`,
-  });
+  useEffect(() => {
+    const section = sectionRef.current;
+    const art = artRef.current;
+    const [greeting, designer, creator] = poseRefs.current;
+    if (!ready || !section || !art || !greeting || !designer || !creator) return;
+
+    // A graceful non-JS / reduced-motion state remains visible without pinning.
+    if (reducedMotion) {
+      gsap.set([greeting, designer, creator], { clearProps: 'all' });
+      gsap.set(greeting, { autoAlpha: 1 });
+      gsap.set([designer, creator], { autoAlpha: 0 });
+      return;
+    }
+
+    const context = gsap.context(() => {
+      gsap.set(greeting, { autoAlpha: 1, xPercent: 0, yPercent: 0, scale: 1, rotation: 0, filter: 'blur(0px)' });
+      gsap.set(designer, { autoAlpha: 0, xPercent: 12, yPercent: 8, scale: 0.84, rotation: -4, filter: 'blur(8px)' });
+      gsap.set(creator, { autoAlpha: 0, xPercent: -10, yPercent: 6, scale: 0.8, rotation: 5, filter: 'blur(10px)' });
+      gsap.set('.character-blink', { autoAlpha: 0 });
+
+      // Independent micro-motion keeps the artwork alive without fighting scroll transforms.
+      gsap.to(art, { y: -9, rotation: 0.4, duration: 3.8, ease: 'sine.inOut', repeat: -1, yoyo: true });
+      gsap.to('.character-particle', { y: -28, opacity: 0.15, duration: 3.2, stagger: 0.45, ease: 'sine.inOut', repeat: -1, yoyo: true });
+
+      const timeline = gsap.timeline({
+        defaults: { ease: 'none' },
+        scrollTrigger: {
+          trigger: section,
+          start: 'top top',
+          end: `+=${SCROLL_DISTANCE}`,
+          scrub: 0.65,
+          pin: true,
+          anticipatePin: 1,
+          invalidateOnRefresh: true,
+          fastScrollEnd: true,
+        },
+      });
+
+      // Transform, blur and opacity move together so the illustrated poses feel continuous.
+      timeline
+        .to(greeting, { xPercent: -13, yPercent: -7, scale: 0.74, rotation: -5, autoAlpha: 0, filter: 'blur(7px)', duration: 1 }, 0)
+        .to(designer, { xPercent: 0, yPercent: 0, scale: 1, rotation: 0, autoAlpha: 1, filter: 'blur(0px)', duration: 1 }, 0)
+        .to('.story-copy--hero', { autoAlpha: 0, y: -24, duration: 0.24 }, 0)
+        .fromTo('.story-copy--designer', { autoAlpha: 0, y: 24 }, { autoAlpha: 1, y: 0, duration: 0.24 }, 0.62)
+        .to(designer, { xPercent: 8, yPercent: -6, scale: 0.76, rotation: 5, autoAlpha: 0, filter: 'blur(8px)', duration: 1 }, 1.55)
+        .to(creator, { xPercent: 0, yPercent: 0, scale: 1, rotation: 0, autoAlpha: 1, filter: 'blur(0px)', duration: 1 }, 1.55)
+        .to('.character-blink', { autoAlpha: 0.22, duration: 0.12 }, 2.45)
+        .to('.story-copy--designer', { autoAlpha: 0, y: -24, duration: 0.24 }, 1.55)
+        .fromTo('.story-copy--creator', { autoAlpha: 0, y: 24 }, { autoAlpha: 1, y: 0, duration: 0.24 }, 2.18);
+    }, section);
+
+    // Refresh once the browser has committed image dimensions and layout.
+    const frame = requestAnimationFrame(() => ScrollTrigger.refresh());
+    return () => {
+      cancelAnimationFrame(frame);
+      context.revert();
+    };
+  }, [ready, reducedMotion]);
 
   return (
-    <section
-      id="hero"
-      ref={heroRef}
-      className="relative flex min-h-screen items-center overflow-hidden bg-primary-bg"
-    >
-      <div className="absolute inset-0 grid-lines opacity-40" />
+    <section id="hero" ref={sectionRef} className={`character-story ${ready ? 'is-ready' : ''}`}>
+      <div className="character-story__backdrop" aria-hidden="true" />
+      <div className="character-story__halo" aria-hidden="true" />
 
-      {/* Oversized background typography */}
-      <div
-        className="pointer-events-none absolute inset-x-0 top-[18%] flex justify-center"
-        style={parallax(-20)}
-      >
-        <p className="text-stroke whitespace-nowrap font-display text-[22vw] font-light leading-none opacity-[0.05]">
-          PORTFOLIO
-        </p>
-      </div>
-
-      {/* Decorative floating elements */}
-      <div className="pointer-events-none absolute inset-0">
-        {/* Wireframe circle */}
-        <div
-          className="absolute right-[8%] top-[22%] h-40 w-40 rounded-full border border-text-primary/15"
-          style={parallax(30)}
-        />
-        <div
-          className="absolute right-[14%] top-[28%] h-24 w-24 rounded-full border border-accent-amber/30"
-          style={parallax(45)}
-        />
-        {/* Engineering symbol — small chip outline */}
-        <svg
-          className="absolute left-[6%] top-[30%] h-16 w-16 opacity-30"
-          style={parallax(25)}
-          viewBox="0 0 64 64"
-          fill="none"
-        >
-          <rect x="16" y="16" width="32" height="32" rx="4" stroke="#2E4B38" strokeWidth="1.5" />
-          <g stroke="#2E4B38" strokeWidth="1.5" strokeLinecap="round">
-            <line x1="24" y1="10" x2="24" y2="16" /><line x1="32" y1="10" x2="32" y2="16" /><line x1="40" y1="10" x2="40" y2="16" />
-            <line x1="24" y1="48" x2="24" y2="54" /><line x1="32" y1="48" x2="32" y2="54" /><line x1="40" y1="48" x2="40" y2="54" />
-            <line x1="10" y1="24" x2="16" y2="24" /><line x1="10" y1="32" x2="16" y2="32" /><line x1="10" y1="40" x2="16" y2="40" />
-            <line x1="48" y1="24" x2="54" y2="24" /><line x1="48" y1="32" x2="54" y2="32" /><line x1="48" y1="40" x2="54" y2="40" />
-          </g>
-        </svg>
-
-        {/* Random number labels */}
-        <span className="absolute left-[12%] bottom-[20%] font-mono text-xs text-text-secondary/50" style={parallax(18)}>
-          01011010
-        </span>
-        <span className="absolute right-[20%] bottom-[26%] font-mono text-xs text-text-secondary/50" style={parallax(22)}>
-          RTL · FSM
-        </span>
-        <span className="absolute left-[44%] top-[14%] font-mono text-[10px] uppercase tracking-widest text-accent-amber/60" style={parallax(35)}>
-          v.001
-        </span>
-
-        {/* Curved line */}
-        <svg className="absolute left-[4%] bottom-[10%] h-32 w-64 opacity-20" style={parallax(15)} viewBox="0 0 240 120" fill="none">
-          <path d="M0 60 Q60 0 120 60 T240 60" stroke="#2E4B38" strokeWidth="1" />
-        </svg>
-
-        {/* Star marks */}
-        <span className="absolute right-[30%] top-[16%] text-2xl text-accent-amber/40" style={parallax(40)}>✦</span>
-        <span className="absolute left-[30%] bottom-[30%] text-lg text-accent-orange/40" style={parallax(30)}>✦</span>
-      </div>
-
-      <div className="container-edit relative z-10 w-full">
-        <div className="grid grid-cols-1 items-center gap-12 lg:grid-cols-12">
-          {/* Left — intro */}
-          <div className="lg:col-span-7">
-            <div className="mb-6 flex items-center gap-3">
-              <span className="h-2 w-2 rounded-full bg-accent-amber" />
-              <span className="font-mono text-xs uppercase tracking-[0.25em] text-text-secondary">
-                Digital VLSI · RTL Design · Web
-              </span>
-            </div>
-
-            <h1 className="font-display text-hero font-light text-text-primary">
-              <SplitText text="Designing" className="block" />
-              <span className="block italic text-accent-amber">
-                <SplitText text="Digital" delay={400} className="block" />
-              </span>
-              <SplitText text="Logic." delay={800} className="block" />
-              <span className="block">
-                <SplitText text="Creating" delay={1100} />
-              </span>
-              <span className="block italic">
-                <SplitText text="Beautiful" delay={1400} />
-              </span>
-              <SplitText text="Experiences." delay={1700} className="block" />
-            </h1>
-
-            <p className="mt-8 max-w-md font-body text-body text-text-secondary">
-              Digital VLSI Enthusiast • RTL Design Learner • Electronics Engineer • Web Designer
-            </p>
-
-            {/* Social-flip + resume */}
-            <div className="mt-10 flex flex-wrap items-center gap-3">
-              <button
-                ref={resumeBtn.ref}
-                data-cursor="Download"
-                className="magnetic flex items-center gap-2 rounded-full bg-text-primary px-6 py-3 font-body text-sm font-medium text-primary-bg transition-all duration-300 hover:bg-accent-amber hover:text-text-primary hover:shadow-glow"
-                style={{ transform: `translate(${resumeBtn.pos.x}px, ${resumeBtn.pos.y}px)` }}
-              >
-                <Download className="h-4 w-4" />
-                Download Resume
-              </button>
-
-              {SOCIALS.map((s) => {
-                const Icon = s.icon;
-                return (
-                  <a
-                    key={s.label}
-                    href={s.href}
-                    data-cursor={s.label}
-                    className="group relative flex h-12 w-12 items-center justify-center overflow-hidden rounded-full border border-text-primary/15 transition-colors duration-300 hover:border-accent-amber"
-                  >
-                    <span className="absolute inset-0 translate-y-full bg-accent-amber transition-transform duration-300 group-hover:translate-y-0" />
-                    <Icon className="relative h-4 w-4 text-text-primary transition-colors duration-300 group-hover:text-text-primary" />
-                  </a>
-                );
-              })}
-            </div>
-
-            <button
-              onClick={() => document.querySelector('#about')?.scrollIntoView({ behavior: 'smooth' })}
-              data-cursor="Scroll"
-              className="mt-14 flex items-center gap-2 font-mono text-xs uppercase tracking-widest text-text-secondary transition-colors hover:text-accent-amber"
-            >
-              <ArrowDown className="h-4 w-4 animate-bounce" />
-              Scroll to explore
-            </button>
-          </div>
-
-          {/* Right — portrait + 3D-ish objects */}
-          <div className="relative lg:col-span-5">
-            <div className="relative mx-auto h-[60vh] max-w-sm lg:h-[82vh]" style={parallax(12)}>
-              {/* Portrait card */}
-              <div
-                className="absolute inset-0 overflow-hidden rounded-lg shadow-large"
-                style={{ transform: 'rotate(-2deg)' }}
-              >
-                <img
-                  src={aditiPortrait}
-                  alt="Aditi Hallikeri portrait"
-                  className="h-full w-full object-cover"
-                  loading="eager"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-secondary-bg/40 via-transparent to-transparent" />
-              </div>
-
-              {/* Floating chip label */}
-              <div
-                className="absolute -left-6 top-12 rounded-sm bg-surface-dark px-3 py-2 font-mono text-[10px] uppercase tracking-widest text-accent-amber shadow-medium"
-                style={parallax(40)}
-              >
-                VLSI · 01
-              </div>
-              <div
-                className="absolute -right-4 bottom-20 rounded-sm bg-accent-amber px-3 py-2 font-mono text-[10px] uppercase tracking-widest text-surface-dark shadow-medium"
-                style={parallax(50)}
-              >
-                RTL · 02
-              </div>
-
-
-            </div>
-          </div>
+      <div className="character-story__copy">
+        <div className="story-copy story-copy--hero">
+          <p className="story-copy__eyebrow">Hello, I&apos;m Aditi</p>
+          <h1>Ideas with<br /><em>intention.</em></h1>
+          <p>I design clear digital experiences and thoughtful systems.</p>
+        </div>
+        <div className="story-copy story-copy--designer" aria-hidden={!ready}>
+          <p className="story-copy__eyebrow">Designer mode</p>
+          <h2>Observe. Build.<br /><em>Refine.</em></h2>
+          <p>Every good interface starts with curiosity.</p>
+        </div>
+        <div className="story-copy story-copy--creator" aria-hidden={!ready}>
+          <p className="story-copy__eyebrow">Made to move forward</p>
+          <h2>Make it<br /><em>matter.</em></h2>
+          <p>Scroll on to see the work behind the ideas.</p>
+          <span className="story-copy__scroll"><ArrowDown size={15} /> Continue</span>
         </div>
       </div>
+
+      <div ref={artRef} className="character-story__art" aria-label="Pixel-art portrait of Aditi">
+        <span className="character-shadow" aria-hidden="true" />
+        {POSES.map((src, index) => (
+          <img
+            key={src}
+            ref={(node) => { poseRefs.current[index] = node; }}
+            className={`character-pose character-pose--${index + 1}`}
+            src={src}
+            alt=""
+            draggable="false"
+          />
+        ))}
+        <span className="character-particle character-particle--one" aria-hidden="true" />
+        <span className="character-particle character-particle--two" aria-hidden="true" />
+        <span className="character-particle character-particle--three" aria-hidden="true" />
+        <span className="character-blink" aria-hidden="true" />
+      </div>
+
+      <div className="character-loader" role="status" aria-live="polite">
+        <span className="character-loader__ring" />
+        <span>Loading story</span>
+      </div>
+      <p className="character-story__progress" aria-hidden="true">Scroll to explore</p>
     </section>
   );
 }

@@ -129,11 +129,6 @@ export default function Education() {
               style={{ width: `${progress * 100}%` }}
             />
           </div>
-          <div className="mt-3 flex items-center justify-between font-mono text-[10px] uppercase tracking-widest text-text-secondary">
-            <span>2023</span>
-            <span>{Math.round(progress * 100)}%</span>
-            <span>Present</span>
-          </div>
         </div>
       </div>
     </section>
